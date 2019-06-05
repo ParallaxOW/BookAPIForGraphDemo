@@ -61,7 +61,7 @@ namespace BookGraphAPI
 
             var bookQuery = _client.CreateDocumentQuery<Book>(
                 UriFactory.CreateDocumentCollectionUri(dbName, dbCollection), queryOptions)
-                .Where(b=> b.Title == title).AsDocumentQuery();
+                .Where(b => b.Title == title).AsDocumentQuery();
 
             List<Book> retVal = new List<Book>();
 
@@ -99,5 +99,23 @@ namespace BookGraphAPI
             return new JsonResult(retVal);
         }
 
+        [FunctionName("PostBook")]
+        public async Task<IActionResult> PostBookAsync(
+           [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "book")] HttpRequest req,
+           ILogger log)
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Book data = JsonConvert.DeserializeObject<Book>(requestBody);
+
+            string dbName = Environment.GetEnvironmentVariable("dbName");
+            string dbCollection = Environment.GetEnvironmentVariable("dbBooksCollection");
+
+            var doc = await _client.UpsertDocumentAsync(UriFactory.CreateDocumentCollectionUri(dbName, dbCollection), data);
+            var createdBook = JsonConvert.DeserializeObject<Book>(doc.Resource.ToString());
+
+            log.LogInformation(JsonConvert.SerializeObject(createdBook));
+
+            return new JsonResult(createdBook);
+        }
     }
 }
